@@ -93,6 +93,54 @@ class BookTableGenerator {
     return html;
   }
 
+  // Generate card layout for mobile
+  generateCards() {
+    if (this.data.length === 0) {
+      return '<p>No data to display</p>';
+    }
+
+    let html = '<div class="data-cards">\n';
+    
+    this.data.forEach((row, index) => {
+      const title = row['Title'] || row['title'] || 'Untitled';
+      const author = row['Author'] || row['author'] || 'Unknown Author';
+      
+      html += `  <div class="book-card" data-index="${index}">\n`;
+      html += '    <div class="book-card-header">\n';
+      html += `      <div>\n`;
+      html += `        <div class="book-card-title">${this.escapeHtml(title)}</div>\n`;
+      html += `        <div class="book-card-author">${this.escapeHtml(author)}</div>\n`;
+      html += `      </div>\n`;
+      html += `      <div class="book-card-toggle">▼</div>\n`;
+      html += '    </div>\n';
+      html += '    <div class="book-card-details">\n';
+      
+      // Add all other details
+      this.headers.forEach(header => {
+        const headerLower = header.toLowerCase();
+        if (headerLower !== 'title' && headerLower !== 'author') {
+          const value = row[header] || '';
+          const displayValue = headerLower === 'price'
+            ? this.formatPrice(value)
+            : value;
+          
+          if (displayValue) {
+            html += `      <div class="book-detail-row">\n`;
+            html += `        <span class="book-detail-label">${this.escapeHtml(header)}:</span>\n`;
+            html += `        <span class="book-detail-value">${this.escapeHtml(displayValue)}</span>\n`;
+            html += `      </div>\n`;
+          }
+        }
+      });
+      
+      html += '    </div>\n';
+      html += '  </div>\n';
+    });
+    
+    html += '</div>';
+    return html;
+  }
+
   // Format price values with a pound sign and two decimals
   formatPrice(value) {
     const text = value.toString().trim();
@@ -142,7 +190,23 @@ class BookTableGenerator {
       return;
     }
     
-    container.innerHTML = this.generateTable();
+    // Generate both table and cards
+    const tableHtml = this.generateTable();
+    const cardsHtml = this.generateCards();
+    container.innerHTML = tableHtml + cardsHtml;
+    
+    // Add click handlers for card expansion
+    this.attachCardHandlers();
+  }
+
+  // Attach click handlers to cards for expand/collapse
+  attachCardHandlers() {
+    const cards = document.querySelectorAll('.book-card');
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        card.classList.toggle('expanded');
+      });
+    });
   }
 
   // Render error message
@@ -166,7 +230,7 @@ class BookTableGenerator {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   // Create table generator for your CSV file
-  const tableGen = new BookTableGenerator('greg_data_my_version.csv', 'table-container');
+  const tableGen = new BookTableGenerator('book_data.csv', 'table-container');
   
   // Load and render the table
   tableGen.loadAndRender();
@@ -174,4 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Log summary
   const summary = tableGen.getSummary();
   console.log(`Loaded ${summary.totalRows} rows with ${summary.columns} columns`);
+  
+  // Re-attach card handlers on window resize to handle responsive layout changes
+  window.addEventListener('resize', () => {
+    tableGen.attachCardHandlers();
+  });
 });
